@@ -1,0 +1,31 @@
+machine:
+  environment:
+    DOCKER_OPENVPN_CERT_GENERATOR_VERSION: 0.0.1
+    DOCKER_IMAGE: 'unifio/openvpn-cert-generator'
+  services:
+    - docker
+
+dependencies:
+  cache_directories:
+    - "~/docker"
+  override:
+    - docker info
+    - if [[ -e ~/docker/image.tar ]]; then docker load --input ~/docker/image.tar; fi
+    - docker build --rm=false -t ${DOCKER_IMAGE} .
+    - mkdir -p ~/docker
+    - docker save ${DOCKER_IMAGE} > ~/docker/image.tar
+
+test:
+  override:
+    - docker run --entrypoint /usr/local/bin/envconsul ${DOCKER_IMAGE} -version
+    - docker run --entrypoint /usr/local/bin/consul-template ${DOCKER_IMAGE} -version
+    - docker run --rm ${DOCKER_IMAGE} openssl version
+    - docker run --rm ${DOCKER_IMAGE} aws --version
+    - docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version
+deployment:
+  hub:
+    branch: dbi-easyrsa3-wip
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker tag `docker images | grep -E "${DOCKER_IMAGE}" | awk '{print $3}'` ${DOCKER_IMAGE}:${DOCKER_OPENVPN_CERT_GENERATOR_VERSION}
+      - docker push ${DOCKER_IMAGE}
