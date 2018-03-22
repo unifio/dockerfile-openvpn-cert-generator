@@ -17,8 +17,6 @@ dependencies:
 
 test:
   override:
-    - docker run --entrypoint /usr/local/bin/envconsul ${DOCKER_IMAGE} -version
-    - docker run --entrypoint /usr/local/bin/consul-template ${DOCKER_IMAGE} -version
     - docker run --rm ${DOCKER_IMAGE} openssl version
     - docker run --rm ${DOCKER_IMAGE} aws --version
     - docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version
