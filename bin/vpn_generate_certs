@@ -1,0 +1,5 @@
+#!/bin/bash
+
+EASY_RSA=$EASY_RSA_2_DIR \
+KEY_CONFIG="${EASY_RSA_2_DIR}/openssl-1.0.0.cnf" \
+openvpn-cert-generator

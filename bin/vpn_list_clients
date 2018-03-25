@@ -1,14 +1,9 @@
 #!/bin/bash
 
-if [ -z "$OPENVPN" ]; then
-    export OPENVPN="$PWD"
-fi
-if ! source "$OPENVPN/ovpn_env.sh"; then
-    echo "Could not source $OPENVPN/ovpn_env.sh."
-    exit 1
-fi
-if [ -z "$EASYRSA_PKI" ]; then
-    export EASYRSA_PKI="$OPENVPN/pki"
+if [ -z "$KEY_DIR" ]; then
+    export EASYRSA_PKI="$PWD"
+else
+    export EASYRSA_PKI=$KEY_DIR
 fi
 
 cd "$EASYRSA_PKI"
@@ -18,7 +13,7 @@ if [ -e crl.pem ]; then
 fi
 
 echo "name,begin,end,status"
-for name in issued/*.crt; do
+for name in *.crt; do
     path=$name
     begin=$(openssl x509 -noout -startdate -in $path | awk -F= '{ print $2 }')
     end=$(openssl x509 -noout -enddate -in $path | awk -F= '{ print $2 }')
