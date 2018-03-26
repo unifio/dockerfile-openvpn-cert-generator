@@ -1,0 +1,65 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/ruby
+    environment:
+      - DOCKER_OPENVPN_CERT_GENERATOR_VERSION: 0.0.2
+      - DOCKER_IMAGE: 'unifio/openvpn-cert-generator'
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 17.11.0-ce
+      # Not gonna bother pulling from cache since it's pretty lightweight
+      # Build steps:
+      - run:
+          name: "Build: docker build --rm=false -t ${DOCKER_IMAGE} ."
+          command: docker build --rm=false -t ${DOCKER_IMAGE} .
+
+      # Test steps:
+      - run:
+          name: "Test: docker run --rm ${DOCKER_IMAGE} openssl version"
+          command: docker run --rm ${DOCKER_IMAGE} openssl version
+      - run:
+          name: "Test: docker run --rm ${DOCKER_IMAGE} aws --version"
+          command: docker run --rm ${DOCKER_IMAGE} aws --version
+      - run:
+          name: "Test: docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version"
+          command: docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version
+
+      # Deploy steps:
+      - run:
+          name: "Deploy: Tag and push only on master branch"
+          command: |
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker tag `docker images | grep -E "${DOCKER_IMAGE}" | awk '{print $3}'` ${DOCKER_IMAGE}:${DOCKER_OPENVPN_CERT_GENERATOR_VERSION}
+              docker push ${DOCKER_IMAGE}
+            fi
+
+# Build is not complicated enough to warrent a workflow, and with some of the
+# features not ported over, going to default to the single "job"
+# https://discuss.circleci.com/t/only-notify-for-some-branches/10244/9
+#
+#workflows:
+#  version: 2
+#
+#  some_flow:
+#    jobs:
+#      - build
+#      - test:
+#          requires:
+#            - build
+#    - deploy:
+#        requires:
+#          - test
+#        filters:
+#          branches:
+#            only:
+#              - master
+experimental:
+  notify:
+    branches:
+      only:
+        - master
