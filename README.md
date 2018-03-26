@@ -5,16 +5,17 @@ ___
 
 The `vpn_generate_certs` is a utility script to help bootstrap a set of certs and configs to assist in quickly getting getting an OpenVPN server/client configuration running. By default, it generates the following:
 
-1. (If the values `S3_REGION` and `S3_CERT_ROOT_PATH` are non-empty strings) Pull down the contents of the s3 path + `S3_DIR_OVERRIDE` (default: "most recent" directory) into the `KEY_DIR` using `awscli` credentials.
+1. ~~(If the values `S3_REGION` and `S3_CERT_ROOT_PATH` are non-empty strings) Pull down the contents of the s3 path + `S3_DIR_OVERRIDE` (default: "most recent" directory) into the `KEY_DIR` using `awscli` credentials.~~
+  * Something seems to be broken with the pulling logic. Pull existing certs down into the volume for mounting before attempting to generate and push new certs.
 1. A root 4096-bit RSA CA cert (`ca.crt` and `ca.key`). The `ca.key` should be sorted in a safe place only for administrative uses.
 1. A server cert signed by the CA above, as well as the server key (`server.key` should similarly be stored in s safe place only for administrative uses)
 1. Diffie-Hellman parameters (4096-bit) for OpenVPN
 1. A valid client cert, key, signing request and ovpn configuration file (client.crt, client.key, client.csr, client.ovpn), as well as a tarball that packages up all 4.
 1. An invalid client cert, `dummy.*` to initialize the `crl.pem` file.
 1. `index.txt` and `serial` for the EasyRSA utility.
-1. (If the values `S3_REGION`, `S3_CERT_ROOT_PATH` are non-empty strings, and `S3_PUSH_DRYRUN` is not falsy) Push up the contents of the `KEY_DIR` to `S3_CERT_ROOT_PATH/<YYYYMMDD-HHMMSSZ>` into the using `awscli` credentials.
+1. (If the values `S3_REGION`, `S3_CERT_ROOT_PATH` are non-empty strings, and `S3_PUSH_DRYRUN` is not falsy) Push up the contents of the `KEY_DIR` to `S3_CERT_ROOT_PATH/<YYYYMMDD-HHMMSSZ>-<dir contents sha>` into the using `awscli` credentials.
 
-If any of the files exist in the mounted directory (by default `/data/keys`), the script will attempt to use the files that currently exist.
+If any of the files exist in the mounted directory (by default `/root/easy-rsa-keys/`), the script will attempt to use the files that currently exist.
 
 * The script can be run multiple times to update an existing set of certs, add more client certs, or revoke client certs.
 * The `index.txt` and `serial` files must be present in an existing `KEY_DIR`. The files are created automatically along with the directory if the `KEY_DIR` directory itself did not exist at the time of executing the script.
@@ -22,7 +23,8 @@ If any of the files exist in the mounted directory (by default `/data/keys`), th
 
 ### Defaults and overrides:
 Environment variables that one can use to override the built in defaults.
-- `KEY_DIR` (/data/keys) - is the directory where all the generated files can be found after running the script. It's intentionally pointed at a non-existent directory to have a new `index.txt` and `serial` be automatically generated. In the case of updating existing sets of certs generated via the EasyRSA utility, make sure these files exist in the mounted/mapped directory.
+- `KEY_DIR` (/root/easy-rsa-keys) - is the directory where all the generated files can be found after running the script. It's intentionally pointed at a non-existent directory to have a new `index.txt` and `serial` be automatically generated. In the case of updating existing sets of certs generated via the EasyRSA utility, make sure these files exist in the mounted/mapped directory.
+  * The tool has some issues when mapping this directory elsewhere. The volume mount should mount into the `/root/ directory and it's best to leave the `KEY_DIR` alone.
 - `KEY_SIZE` (4096) - controls the RSA-bit size for both the Diffie-Hellman paramaters and the certificates.
 - `CA_EXPIRE` (3650) - used by easyRSA's `pkitool`. Controls the number of days from the day the CA cert is generated until it expires. For usage simplicity, the cert is set to expire very far in the future (10 years). For security purposes, it'd be wise to lower this and figure out a certificate rotation policy.
   * The `/usr/bin/vpn_list_certs` tool is useful for checking the validity and expiration of certs
@@ -45,7 +47,7 @@ Environment variables that one can use to override the built in defaults.
 - `FORCE_CERT_REGEN` ('false') - Is used to ignore all the contents in the `KEY_DIR`, `rm -rf` them and force the script to re-run, regenerating everything in the script.
 - `S3_PUSH_DRYRUN` ('false') - Is used by the `awscli` when pushing certs up to the s3 path to toggle the `--dryrun` flag. Ignored if `S3_REGION` and `S3_CERT_ROOT_PATH` is not set.
 - `S3_REGION` ($AWS_DEFAULT_REGION) - Is used by the `awscli`.
-- `S3_CERT_ROOT_PATH` ('') - Is used by the `awscli` to determine where to pull the certs from. The values should look something like `s3://some-example-bucket/optional-path/`, with the trailing `/`
+- `S3_CERT_ROOT_PATH` ('') - Is used by the `awscli` to determine where to pull the certs from. The values should look something like `s3://some-example-bucket/optional-path`. The parsing is a bit finicky, so if it's a just a root level bucket, you should have a trailing slash. Otherwise, if it's a sub-directory of a root bucket, it should be like the format above.
 - `S3_DIR_OVERRIDE` ('') - Is used during the S3 path pulling phase above to force the certs to be pulled from a specific sub-path of `S3_CERT_ROOT_PATH`, instead of attempting to pull from the "latest" timestampped directory (latest is determined via a name-sort, and assumes that the directories are named in a `YYYYMMDD-HHMMSSZ` format to facilitate name/time sorting)
   * It's best to set this manually, or monitor the cert generation process as it runs to avoid any surprises.
   * This only affects the pull process, not the s3 push process.
@@ -63,9 +65,55 @@ The `vpn_list_certs` script is an adaptation of https://github.com/kylemanna/doc
 
 ---
 ## Example usage:
-
-- `docker run -it -v ${PWD}/tmp:/data -e KEY_SIZE=1024 unifio/openvpn-cert-generator vpn_generate_certs`
-  * Generate a set of certs in `${PWD}/tmp/keys`.
+```
+docker run \
+  -v ${PWD}/tmp:/root \
+  -e KEY_SIZE=1024 \
+  unifio/openvpn-cert-generator \
+  vpn_generate_certs
+```
+  * Generate a set of certs in `${PWD}/tmp/easy-rsa-keys`.
   * Use 1024-bit keys for DH params, SSL cert complexity.
-- `docker run -it -v ${PWD}/tmp:/data` unifio/openvpn-cert-generator vpn_list_clients
-  * List cert status in `${PWD}/tmp/keys`.
+___
+```
+docker run \
+  -v ${PWD}/tmp:/root` \
+  unifio/openvpn-cert-generator \
+  vpn_list_clients
+```
+  * List cert status in `${PWD}/tmp/easy-rsa-keys`.
+___
+```
+aws s3 cp s3://some-example-bucket/test/20180326-051613Z-a74cbd8ef5206f4d83c17f3d3accfab0/ tmp/foo/ --recursive
+docker run \
+  -v ${PWD}/tmp/foo:/root/easy-rsa-keys \
+  -e AWS_ACCESS_KEY_ID=xxx \
+  -e AWS_SECRET_ACCESS_KEY=xxx \
+  -e S3_REGION=us-east-1 \
+  -e S3_CERT_ROOT_PATH=s3://some-example-bucket/test \
+  -e KEY_SIZE=1024 \
+  unifio/openvpn-cert-generator \
+  vpn_generate_certs
+```
+  * Use ${PWD}/tmp/foo as the starting base for generating/updating the cert list
+  * Use 1024-bit keys for DH params, SSL cert complexity.
+  * After updating the certs, push the certs up to the s3://some-example-bucket/test/\<some new directory\>
+___
+```
+docker run -it \
+  -v ${PWD}/tmp:/root \
+  --env-file=.env \
+  -e AWS_ACCESS_KEY_ID=xxx \
+  -e AWS_SECRET_ACCESS_KEY=xxx \
+  -e S3_REGION=us-east-1 \
+  -e S3_CERT_ROOT_PATH=s3://some-example-bucket/some-non-existant-path \
+  -e KEY_SIZE=1024 \
+  -e ACTIVE_CLIENTS=client,foo \
+  -e FORCE_CERT_REGEN=true \
+  foo/openvpn-cert-generator \
+  vpn_generate_cert
+```
+  * `rm -rf` files in ${PWD}/tmp/easy-rsa-keys, if any.
+  * Generate a set of certs in `${PWD}/tmp/easy-rsa-keys`. Generate client certs and configs for "client", and "foo"
+  * Use 1024-bit keys for DH params, SSL cert complexity.
+  * Push certs into s3://some-example-bucket/some-non-existant-path/\<some date\>-\<some sha\>

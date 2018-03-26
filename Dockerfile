@@ -39,6 +39,8 @@ RUN set -ex && \
     mkdir -p /usr/share/easy-rsa2 && \
     tar -xvzf EasyRSA-${EASY_RSA_2_VERSION}.tgz -C /tmp && \
     mv /tmp/EasyRSA-${EASY_RSA_2_VERSION}/* ${EASY_RSA_2_DIR} && \
+    # bad defaults in the openvpn-cert-generator pip package
+    ln -s /usr/bin/aws /usr/local/bin/aws && \
     # cleanup
     apk --purge -v del \
       curl \
@@ -54,13 +56,13 @@ ENV EASYRSA_PKI $OPENVPN/pki
 ENV EASYRSA_VARS_FILE $OPENVPN/vars
 
 # Defaults for /generate_certs.sh
-ENV S3_REGION=$AWS_DEFAULT_REGION
-ENV S3_CERT_ROOT_PATH=""
-ENV KEY_SIZE=4096
-ENV KEY_DIR="/data/keys"
-ENV S3_DIR_OVERRIDE=""
+ENV S3_REGION us-east-1
+ENV S3_CERT_ROOT_PATH ""
+ENV KEY_SIZE 4096
+ENV KEY_DIR /root/easy-rsa-keys
+ENV S3_DIR_OVERRIDE ""
 
-VOLUME ["/data"]
+VOLUME ["/root"]
 
 CMD ["/bin/bash"]
 
