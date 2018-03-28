@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+
+pushd "$KEY_DIR"
+FILENAME="crl-$(date +"%Y%m%d%H%M").pem"
+
+# these args don't seem to be used for crl renewal, but needed for the openssl utility
+PKCS11_MODULE_PATH="dummy" \
+  PKCS11_PIN="dummy" \
+  KEY_NAME="" \
+  KEY_CN="" \
+  KEY_OU="" \
+  KEY_EMAIL="" \
+  KEY_COUNTRY="" \
+  KEY_PROVINCE="" \
+  KEY_CITY="" \
+  KEY_ORG="" \
+  openssl ca -gencrl -out $FILENAME -config /usr/share/easy-rsa2/openssl-1.0.0.cnf
+
+echo "Update times for $FILENAME"
+openssl crl -in $FILENAME -noout -text | grep Update

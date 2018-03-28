@@ -51,6 +51,7 @@ Environment variables that one can use to override the built in defaults.
 - `S3_DIR_OVERRIDE` ('') - Is used during the S3 path pulling phase above to force the certs to be pulled from a specific sub-path of `S3_CERT_ROOT_PATH`, instead of attempting to pull from the "latest" timestampped directory (latest is determined via a name-sort, and assumes that the directories are named in a `YYYYMMDD-HHMMSSZ` format to facilitate name/time sorting)
   * It's best to set this manually, or monitor the cert generation process as it runs to avoid any surprises.
   * This only affects the pull process, not the s3 push process.
+- `EASYRSA_CRL_DAYS` (3650) - Is used by the CRL process in determining how long before the `crl.pem` needs to be renewed/regenerated.
 
 ### Notes:
 - Be aware, that values in the client *.ovpn files can always be change either manually, or programmatically via the OpenVPN client being used, once the files have be distributed to the clients.
@@ -64,6 +65,10 @@ Environment variables that one can use to override the built in defaults.
 The `vpn_list_certs` script is an adaptation of https://github.com/kylemanna/docker-openvpn/blob/master/bin/ovpn_listclients script that uses the `openssl` tool to list the name, date generated, date expiry, and validity of certs. It targets the `KEY_DIR` directory and assumes that all cert files (ca, server/client signed certs) are all in the same directory.
 
 ---
+## `vpn_renew_crl`
+
+The `vpn_renew_crl` script is used to help generate a new CRL, in the event the old `crl.pem` file expires. It will use the env value set for `EASYRSA_CRL_DAYS` and display the new renewal date afterwards. The file is named crl-YYYYMMDDHHMM.pem to avoid overwriting the old crl file.
+
 ## Example usage:
 ```
 docker run \
