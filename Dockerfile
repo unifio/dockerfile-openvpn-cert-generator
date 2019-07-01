@@ -7,9 +7,9 @@ MAINTAINER Unif.io, Inc. <support@unif.io>
 
 ENV EASY_RSA_2_VERSION=2.2.2
 ENV EASY_RSA_2_DIR=/usr/share/easy-rsa2
-
+ENV EASY_RSA_GPG_KEY=6F4056821152F03B6B24F2FCF8489F839D7367F3
 RUN set -ex && \
-      apk add --update \
+      apk add --no-cache --update \
       bash \
       curl \
       easy-rsa \
@@ -17,24 +17,25 @@ RUN set -ex && \
       gnupg \
       groff \
       less \
-      py2-pip \
-      python \
-      py-setuptools && \
+      python3 && \
     # pip
-    pip install --upgrade pip && \
+    if [ ! -e /usr/bin/python ]; then ln -sf python3 /usr/bin/python ; fi && \
+    \
+    echo "**** install pip ****" && \
+    python3 -m ensurepip && \
+    rm -r /usr/lib/python*/ensurepip && \
+    pip3 install --no-cache --upgrade pip setuptools wheel && \
+    if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
     pip install awscli && \
-    pip install git+https://github.com/unifio/openvpn-cert-generator.git@dbi-easyrsa3-wip && \
+    pip install git+https://github.com/unifio/openvpn-cert-generator.git && \
     # grab specific version of easy-rsa
     mkdir -p /tmp/build && \
     cd /tmp/build && \
     curl -s -L --output EasyRSA-${EASY_RSA_2_VERSION}.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/${EASY_RSA_2_VERSION}/EasyRSA-${EASY_RSA_2_VERSION}.tgz" && \
     curl -s -L --output EasyRSA-${EASY_RSA_2_VERSION}.tgz.sig "https://github.com/OpenVPN/easy-rsa/releases/download/${EASY_RSA_2_VERSION}/EasyRSA-${EASY_RSA_2_VERSION}.tgz.sig" && \
     # try a few different keyservers
-    for server in $(shuf -e ipv4.pool.sks-keyservers.net \
-                            keys.gpupg.net \
-                            pgp.mit.edu) ; do \
-      gpg --keyserver "$server" --recv-keys 6F4056821152F03B6B24F2FCF8489F839D7367F3 && break || : ; \
-    done && \
+    ( gpg --keyserver ipv4.pool.sks-keyservers.net --receive-keys "$EASY_RSA_GPG_KEY" \
+      || gpg --keyserver ha.pool.sks-keyservers.net --receive-keys "$EASY_RSA_GPG_KEY" ); \
     gpg --verify EasyRSA-${EASY_RSA_2_VERSION}.tgz.sig && \
     mkdir -p /usr/share/easy-rsa2 && \
     tar -xvzf EasyRSA-${EASY_RSA_2_VERSION}.tgz -C /tmp && \
@@ -47,8 +48,7 @@ RUN set -ex && \
     apk --purge -v del \
       curl \
       git \
-      gnupg \
-      py2-pip && \
+      gnupg && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
 
 # Needed by scripts
