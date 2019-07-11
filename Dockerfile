@@ -42,6 +42,9 @@ RUN set -ex && \
     mv /tmp/EasyRSA-${EASY_RSA_2_VERSION}/* ${EASY_RSA_2_DIR} && \
     # Get easy-rsa2 to source in a CRL expire time period instead of using the default 30 days
     sed -i 's/default_crl_days=\ 30/default_crl_days=\ \$ENV::EASYRSA_CRL_DAYS/g' /usr/share/easy-rsa2/openssl-1.0.0.cnf && \
+    # Remove deprecated RANDFILE to avoid error
+    # https://github.com/openssl/openssl/commit/0f58220973a02248ca5c69db59e615378467b9c8#diff-8ce6aaad88b10ed2b3b4592fd5c8e03aL13
+    sed -i 's/^\(RANDFILE.*\)$/#\1/g' /usr/share/easy-rsa2/openssl-1.0.0.cnf && \
     # bad defaults in the openvpn-cert-generator pip package
     ln -s /usr/bin/aws /usr/local/bin/aws && \
     # cleanup
