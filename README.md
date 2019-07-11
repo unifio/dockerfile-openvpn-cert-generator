@@ -34,7 +34,7 @@ Environment variables that one can use to override the built in defaults.
 - `ACTIVE_CLIENTS` (client) - is a comma-delimited list of active, valid client certs for the script to generate. The values here will generate client certs matching the comma-delimited name values.
   * The order of the client will affect the order the certs are generated, and correspond with their respective values in the `index.txt` and `serial` files. It's best not to change the order of existing certs once they are set.
   * `dummy` is the built in value that should cannot be used.
-- `REVOKED_CERTS` ('') - is a comma-delimited list of certs to revoke. Typically, this should be a subset of the values from the `ACTIVE_CLIENTS` list.
+- `REVOKED_CLIENTS` ('') - is a comma-delimited list of certs to revoke. Typically, this should be a subset of the values from the `ACTIVE_CLIENTS` list.
   * A revoked client should stay in the `ACTIVE_CLIENTS` list, to avoid the confusion in accidentally generating another certificate with the same name.
 - `OPENVPN_DEV` (tun) - controls the value generated in the client *.ovpn files for `dev`. For more information, see the documentation for openvpn regarding the `--dev` option`. This value needs to match the value used in the server configuration (which is not generate as part of these scripts).
 - `OPENVPN_PROTO` (tcp) - controls the value generated in the client *.ovpn files for `dev`. For more information, see the documentation for openvpn regarding the `--proto` option`. This value needs to match the value used in the server configuration (which is not generate as part of these scripts).
