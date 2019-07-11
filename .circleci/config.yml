@@ -27,7 +27,9 @@ jobs:
       - run:
           name: "Test: docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version"
           command: docker run --rm ${DOCKER_IMAGE} /usr/share/easy-rsa2/pkitool --version
-
+      - run:
+          name: "Test: docker run --rm ${DOCKER_IMAGE} pip freeze | grep openvpn-cert-generator"
+          command: docker run --rm ${DOCKER_IMAGE} pip freeze | grep openvpn-cert-generator | awk -F '==' '{print $1 " module v"$2}'
       # Deploy steps:
       - run:
           name: "Deploy: Tag and push only on master branch"
